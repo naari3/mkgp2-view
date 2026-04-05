@@ -157,7 +157,7 @@ impl eframe::App for App {
 
         // Player kart state
         ui.heading("プレイヤー");
-        render_kart_state(ui, &self.state.player);
+        render_kart_state(ui, &self.state.player, self.state.race_started);
 
         if !self.state.ai_karts.is_empty() {
             ui.separator();
@@ -175,7 +175,8 @@ impl eframe::App for App {
 
                     for ai in &self.state.ai_karts {
                         ui.label(format!("S{}", ai.slot));
-                        ui.monospace(format!("{}", ai.race_position));
+                        // race_position is 0-indexed (0=1st place)
+                        ui.monospace(format!("{}位", ai.race_position + 1));
                         ui.monospace(format!("{}", ai.current_lap));
                         // Target speed is stored ×10000 scaled
                         ui.monospace(format!("{:.1}-{:.1}", ai.target_speed_min / 10000.0, ai.target_speed_max / 10000.0));
@@ -190,7 +191,7 @@ impl eframe::App for App {
     }
 }
 
-fn render_kart_state(ui: &mut egui::Ui, kart: &dolphin::KartState) {
+fn render_kart_state(ui: &mut egui::Ui, kart: &dolphin::KartState, race_started: bool) {
     egui::Grid::new(format!("kart_{}", kart.slot))
         .num_columns(2)
         .spacing([20.0, 4.0])
@@ -250,7 +251,7 @@ fn render_kart_state(ui: &mut egui::Ui, kart: &dolphin::KartState) {
             if kart.is_airborne {
                 flags.push("空中");
             }
-            if kart.start_dash_ready {
+            if kart.start_dash_ready && !race_started {
                 flags.push("ロケスタ準備");
             }
             if flags.is_empty() {

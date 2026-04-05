@@ -138,18 +138,22 @@ impl eframe::App for App {
 
         // Race info
         ui.horizontal(|ui| {
-            ui.label("コース:");
+            ui.label(self.state.game_mode_name());
+            ui.label("|");
             ui.strong(self.state.course_name());
             ui.label("|");
             ui.label(self.state.cc_label());
-            ui.label("|");
-            if self.state.race_started {
-                ui.colored_label(egui::Color32::GREEN, "レース中");
-            } else {
-                ui.label(format!("カウントダウン (phase {})", self.state.countdown_phase));
-            }
             if self.state.total_laps > 0 {
                 ui.label(format!("| {}ラップ", self.state.total_laps));
+            }
+        });
+        ui.horizontal(|ui| {
+            if self.state.race_started {
+                ui.colored_label(egui::Color32::GREEN, "● GO!");
+            } else if self.state.countdown_phase < 4 {
+                ui.colored_label(egui::Color32::YELLOW, format!("● カウントダウン {}", 4 - self.state.countdown_phase));
+            } else {
+                ui.label("● 待機中");
             }
         });
 

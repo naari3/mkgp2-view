@@ -6,6 +6,7 @@ pub mod addr {
     pub const G_PLAYER_CAR_OBJECT: u32 = 0x806d1098;
     pub const G_CC_CLASS: u32 = 0x806d12cc;
     pub const G_COURSE_ID: u32 = 0x806cf108;
+    pub const G_GAME_MODE: u32 = 0x806d1294; // 0=Race, 1=Battle, 2=TA
     pub const G_RACE_STARTED: u32 = 0x806d1260;
     pub const G_COUNTDOWN_PHASE: u32 = 0x806d1284;
     pub const G_TOTAL_LAPS: u32 = 0x806d1348;
@@ -55,28 +56,38 @@ pub mod addr {
     pub const KM_IS_AIRBORNE: u32 = 0x2BD;
 }
 
+// charId mapping confirmed in mkgp2docs/mkgp2_characters_and_karts.md
 pub const CHAR_NAMES: &[&str] = &[
-    "マリオ",       // 0
-    "ルイージ",     // 1
-    "ピーチ",       // 2
-    "ヨッシー",     // 3
-    "キノピオ",     // 4
-    "ワリオ",       // 5
-    "ドンキー",     // 6
-    "ワルイージ",   // 7
-    "クッパ",       // 8
-    "?9",           // 9 — パックマン or ミズパックマン (要確認)
-    "アカベイ",     // 10
-    "キノピコ",     // 11
-    "まめっち",     // 12
-    "?13",          // 13 — パックマン or ミズパックマン (要確認)
-    "?14",          // 14 — 不明
+    "マリオ",         // 0
+    "ルイージ",       // 1
+    "ワリオ",         // 2
+    "ピーチ",         // 3
+    "クッパ",         // 4
+    "キノピオ",       // 5
+    "ドンキー",       // 6
+    "ヨッシー",       // 7
+    "パックマン",     // 8
+    "ミズパックマン", // 9
+    "アカベイ",       // 10
+    "ワルイージ",     // 11
+    "まめっち",       // 12
+    "?13",            // 13
+    "?14",            // 14
 ];
 
 pub const COURSE_NAMES: &[&str] = &[
-    "(none)", "マリオ", "DK", "ワリオ", "パックマン",
-    "クッパ", "レインボー", "ヨシー", "ワルイージ",
+    "(none)",          // 0
+    "マリオカップ",     // 1
+    "DKカップ",         // 2
+    "ワリオカップ",     // 3
+    "パックマンカップ", // 4
+    "クッパカップ",     // 5
+    "レインボーカップ", // 6
+    "ヨッシーカップ",   // 7
+    "ワルイージカップ", // 8
 ];
+
+pub const GAME_MODE_NAMES: &[&str] = &["Race", "Battle", "TA"];
 
 pub const CC_LABELS: &[&str] = &["50cc", "100cc", "150cc"];
 
@@ -125,6 +136,7 @@ pub struct AiKartState {
 #[derive(Default)]
 pub struct GameState {
     pub connected: bool,
+    pub game_mode: u32,
     pub cc_class: u32,
     pub course_id: u32,
     pub race_started: bool,
@@ -136,12 +148,27 @@ pub struct GameState {
 }
 
 impl GameState {
-    pub fn course_name(&self) -> &'static str {
-        COURSE_NAMES.get(self.course_id as usize).unwrap_or(&"???")
+    pub fn course_name(&self) -> String {
+        COURSE_NAMES
+            .get(self.course_id as usize)
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| format!("courseId={}", self.course_id))
     }
 
     pub fn cc_label(&self) -> &'static str {
         CC_LABELS.get(self.cc_class as usize).unwrap_or(&"???")
+    }
+
+    pub fn game_mode_name(&self) -> String {
+        GAME_MODE_NAMES
+            .get(self.game_mode as usize)
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| format!("mode={}", self.game_mode))
+    }
+
+    pub fn is_in_race(&self) -> bool {
+        // Player CarObject must exist for a race to be active
+        self.player.char_id < 15 && self.race_started
     }
 }
 
@@ -171,6 +198,7 @@ pub fn try_read_state(dolphin: &Dolphin) -> GameState {
     };
 
     match (|| -> Result<(), String> {
+        state.game_mode = read_u32(dolphin, addr::G_GAME_MODE)?;
         state.cc_class = read_u32(dolphin, addr::G_CC_CLASS)?;
         state.course_id = read_u32(dolphin, addr::G_COURSE_ID)?;
         state.race_started = read_u8(dolphin, addr::G_RACE_STARTED)? != 0;

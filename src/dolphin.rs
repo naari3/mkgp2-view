@@ -6,6 +6,7 @@ pub mod addr {
     pub const G_PLAYER_CAR_OBJECT: u32 = 0x806d1098;
     pub const G_CC_CLASS: u32 = 0x806d12cc;
     pub const G_COURSE_ID: u32 = 0x806cf108;
+    pub const G_IS_URA_COURSE: u32 = 0x806d1268;
     pub const G_GAME_MODE: u32 = 0x806d1294; // 0=Race, 1=Battle, 2=TA
     pub const G_RACE_STARTED: u32 = 0x806d1260;
     pub const G_COUNTDOWN_PHASE: u32 = 0x806d1284;
@@ -139,6 +140,7 @@ pub struct GameState {
     pub game_mode: u32,
     pub cc_class: u32,
     pub course_id: u32,
+    pub is_ura: bool,
     pub race_started: bool,
     pub countdown_phase: u32,
     pub total_laps: u32,
@@ -149,10 +151,18 @@ pub struct GameState {
 
 impl GameState {
     pub fn course_name(&self) -> String {
-        COURSE_NAMES
+        let side = if self.is_ura { "ウラ" } else { "オモテ" };
+        let name = COURSE_NAMES
             .get(self.course_id as usize)
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| format!("courseId={}", self.course_id))
+            .copied()
+            .unwrap_or("???");
+        if self.course_id == 0 {
+            format!("courseId={}", self.course_id)
+        } else if self.course_id <= 8 {
+            format!("{} {}", side, name)
+        } else {
+            format!("courseId={}", self.course_id)
+        }
     }
 
     pub fn cc_label(&self) -> &'static str {
@@ -201,6 +211,7 @@ pub fn try_read_state(dolphin: &Dolphin) -> GameState {
         state.game_mode = read_u32(dolphin, addr::G_GAME_MODE)?;
         state.cc_class = read_u32(dolphin, addr::G_CC_CLASS)?;
         state.course_id = read_u32(dolphin, addr::G_COURSE_ID)?;
+        state.is_ura = read_u32(dolphin, addr::G_IS_URA_COURSE)? != 0;
         state.race_started = read_u8(dolphin, addr::G_RACE_STARTED)? != 0;
         state.countdown_phase = read_u32(dolphin, addr::G_COUNTDOWN_PHASE)?;
         state.total_laps = read_u32(dolphin, addr::G_TOTAL_LAPS)?;

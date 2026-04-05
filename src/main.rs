@@ -148,8 +148,10 @@ impl eframe::App for App {
             }
         });
         ui.horizontal(|ui| {
-            if self.state.race_started {
-                ui.colored_label(egui::Color32::GREEN, "● GO!");
+            if self.state.player_ptr == 0 {
+                ui.label("● レース外");
+            } else if self.state.race_started {
+                ui.colored_label(egui::Color32::GREEN, "● レース中");
             } else if self.state.countdown_phase < 4 {
                 ui.colored_label(egui::Color32::YELLOW, format!("● カウントダウン {}", 4 - self.state.countdown_phase));
             } else {
@@ -202,6 +204,14 @@ fn render_kart_state(ui: &mut egui::Ui, kart: &dolphin::KartState, race_started:
         .show(ui, |ui| {
             ui.label("キャラ:");
             ui.strong(format!("{} (id={})", kart.char_name(), kart.char_id));
+            ui.end_row();
+
+            ui.label("順位:");
+            ui.strong(format!("{}位", kart.race_position + 1));
+            ui.end_row();
+
+            ui.label("ラップ:");
+            ui.monospace(format!("{}", kart.current_lap));
             ui.end_row();
 
             ui.label("速度:");

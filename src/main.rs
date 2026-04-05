@@ -183,7 +183,14 @@ impl eframe::App for App {
                         ui.label(format!("S{}", ai.slot));
                         // race_position is 0-indexed (0=1st place)
                         ui.monospace(format!("{}位", ai.race_position + 1));
-                        ui.monospace(format!("{}", ai.current_lap));
+                        // remaining_laps is a countdown. Convert to current lap display.
+                        let total = self.state.total_laps;
+                        if total > 0 && ai.remaining_laps <= total + 1 {
+                            let current = total + 1 - ai.remaining_laps;
+                            ui.monospace(format!("{}/{}", current, total));
+                        } else {
+                            ui.monospace(format!("(残{})", ai.remaining_laps));
+                        }
                         // Target speed is stored ×10000 scaled
                         ui.monospace(format!("{:.1}-{:.1}", ai.target_speed_min / 10000.0, ai.target_speed_max / 10000.0));
                         ui.monospace(format!(
@@ -206,13 +213,8 @@ fn render_kart_state(ui: &mut egui::Ui, kart: &dolphin::KartState, race_started:
             ui.strong(format!("{} (id={})", kart.char_name(), kart.char_id));
             ui.end_row();
 
-            ui.label("順位:");
-            ui.strong(format!("{}位", kart.race_position + 1));
-            ui.end_row();
-
-            ui.label("ラップ:");
-            ui.monospace(format!("{}", kart.current_lap));
-            ui.end_row();
+            // Player position/lap not yet available (KartMovement+0x23C/0x240 are different types for player)
+            // TODO: find player ranking source
 
             ui.label("速度:");
             ui.strong(format!("{:.1}", kart.speed_magnitude()));

@@ -136,7 +136,7 @@ pub struct AiKartState {
     pub target_speed_min: f32,
     pub target_speed_max: f32,
     pub race_position: u32,
-    pub current_lap: u32,
+    pub remaining_laps: u32, // *(kc+0x10)+0x240: countdown value, not current lap
 }
 
 #[derive(Default)]
@@ -254,7 +254,7 @@ pub fn try_read_state(dolphin: &Dolphin) -> GameState {
                 } else {
                     0
                 },
-                current_lap: if ps_ptr != 0 {
+                remaining_laps: if ps_ptr != 0 {
                     read_u32(dolphin, ps_ptr + addr::PS_CURRENT_LAP)?
                 } else {
                     0
@@ -284,8 +284,10 @@ fn read_kart_state(dolphin: &Dolphin, car_obj: u32) -> Result<KartState, String>
         slot: read_u32(dolphin, car_obj + addr::CAR_KART_SLOT)?,
         char_id: read_u32(dolphin, car_obj + addr::CAR_CHAR_ID)?,
         is_player: read_u8(dolphin, car_obj + addr::CAR_IS_PLAYER)? != 0,
-        race_position: read_u32(dolphin, km_ptr + addr::KM_RACE_POSITION)?,
-        current_lap: read_u32(dolphin, km_ptr + addr::KM_CURRENT_LAP)?,
+        // KartMovement+0x23C/0x240 は プレイヤーのKartMovementでは別の型(float)が入っている
+        // プレイヤーの順位・ラップ取得は別の経路が必要 (TODO)
+        race_position: 0,
+        current_lap: 0,
         coin_count: read_u32(dolphin, car_obj + addr::CAR_COIN_COUNT)?,
         speed_table_index: read_u32(dolphin, km_ptr + addr::KM_SPEED_TABLE_INDEX)?,
         travel_progress: read_f32(dolphin, km_ptr + addr::KM_TRAVEL_PROGRESS)?,

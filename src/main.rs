@@ -15,8 +15,44 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "MKGP2 View",
         options,
-        Box::new(|_cc| Ok(Box::new(App::new()))),
+        Box::new(|cc| {
+            setup_japanese_font(&cc.egui_ctx);
+            Ok(Box::new(App::new()))
+        }),
     )
+}
+
+fn setup_japanese_font(ctx: &egui::Context) {
+    let mut fonts = egui::FontDefinitions::default();
+
+    // Try loading a Japanese system font
+    let candidates = [
+        "C:\\Windows\\Fonts\\meiryo.ttc",
+        "C:\\Windows\\Fonts\\msgothic.ttc",
+        "C:\\Windows\\Fonts\\YuGothR.ttc",
+    ];
+
+    for path in candidates {
+        if let Ok(data) = std::fs::read(path) {
+            fonts.font_data.insert(
+                "jp".to_owned(),
+                std::sync::Arc::new(egui::FontData::from_owned(data)),
+            );
+            fonts
+                .families
+                .entry(egui::FontFamily::Proportional)
+                .or_default()
+                .insert(1, "jp".to_owned());
+            fonts
+                .families
+                .entry(egui::FontFamily::Monospace)
+                .or_default()
+                .push("jp".to_owned());
+            break;
+        }
+    }
+
+    ctx.set_fonts(fonts);
 }
 
 struct App {

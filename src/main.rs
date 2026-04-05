@@ -177,7 +177,8 @@ impl eframe::App for App {
                         ui.label(format!("S{}", ai.slot));
                         ui.monospace(format!("{}", ai.race_position));
                         ui.monospace(format!("{}", ai.current_lap));
-                        ui.monospace(format!("{:.0}-{:.0}", ai.target_speed_min, ai.target_speed_max));
+                        // Target speed is stored ×10000 scaled
+                        ui.monospace(format!("{:.1}-{:.1}", ai.target_speed_min / 10000.0, ai.target_speed_max / 10000.0));
                         ui.monospace(format!(
                             "({:.0}, {:.0}, {:.0})",
                             ai.pos[0], ai.pos[1], ai.pos[2]
@@ -195,7 +196,7 @@ fn render_kart_state(ui: &mut egui::Ui, kart: &dolphin::KartState) {
         .spacing([20.0, 4.0])
         .show(ui, |ui| {
             ui.label("キャラ:");
-            ui.strong(kart.char_name());
+            ui.strong(format!("{} (id={})", kart.char_name(), kart.char_id));
             ui.end_row();
 
             ui.label("速度:");

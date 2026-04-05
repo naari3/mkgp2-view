@@ -15,7 +15,9 @@ pub mod addr {
     pub const AI_KART_CONTROLLERS: u32 = 0x80679598; // [0..4] = 4 bytes each
 
     // KartController offsets
-    pub const KC_PHYSICS_STATE: u32 = 0x20;
+    // KartController_GetPhysicsState returns *(kc+0x10), NOT +0x20
+    // +0x20 is a different object used for physics ops in KartController_Update
+    pub const KC_PHYSICS_STATE: u32 = 0x10;
     pub const KC_POS_X: u32 = 0x30;
     pub const KC_POS_Y: u32 = 0x34;
     pub const KC_POS_Z: u32 = 0x38;

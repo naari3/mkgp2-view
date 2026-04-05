@@ -122,6 +122,34 @@ impl eframe::App for App {
         // Player kart state
         ui.heading("プレイヤー");
         render_kart_state(ui, &self.state.player);
+
+        if !self.state.ai_karts.is_empty() {
+            ui.separator();
+            ui.heading("AI");
+            egui::Grid::new("ai_grid")
+                .num_columns(5)
+                .spacing([8.0, 4.0])
+                .show(ui, |ui| {
+                    ui.strong("Slot");
+                    ui.strong("順位");
+                    ui.strong("ラップ");
+                    ui.strong("目標速度");
+                    ui.strong("位置");
+                    ui.end_row();
+
+                    for ai in &self.state.ai_karts {
+                        ui.label(format!("S{}", ai.slot));
+                        ui.monospace(format!("{}", ai.race_position));
+                        ui.monospace(format!("{}", ai.current_lap));
+                        ui.monospace(format!("{:.0}-{:.0}", ai.target_speed_min, ai.target_speed_max));
+                        ui.monospace(format!(
+                            "({:.0}, {:.0}, {:.0})",
+                            ai.pos[0], ai.pos[1], ai.pos[2]
+                        ));
+                        ui.end_row();
+                    }
+                });
+        }
     }
 }
 

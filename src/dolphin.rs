@@ -14,6 +14,18 @@ pub mod addr {
     // AI kart controller pointers (5 slots)
     pub const AI_KART_CONTROLLERS: u32 = 0x80679598; // [0..4] = 4 bytes each
 
+    // KartController offsets
+    pub const KC_PHYSICS_STATE: u32 = 0x20;
+    pub const KC_POS_X: u32 = 0x30;
+    pub const KC_POS_Y: u32 = 0x34;
+    pub const KC_POS_Z: u32 = 0x38;
+    pub const KC_TARGET_SPEED_MIN: u32 = 0x8C;
+    pub const KC_TARGET_SPEED_MAX: u32 = 0x90;
+
+    // PhysicsState offsets (via KartController+0x20)
+    pub const PS_RACE_POSITION: u32 = 0x23C;
+    pub const PS_CURRENT_LAP: u32 = 0x240;
+
     // CarObject offsets
     pub const CAR_KART_SLOT: u32 = 0x10;
     pub const CAR_CHAR_ID: u32 = 0x14;
@@ -87,6 +99,16 @@ impl KartState {
 }
 
 #[derive(Default)]
+pub struct AiKartState {
+    pub slot: u32,
+    pub pos: [f32; 3],
+    pub target_speed_min: f32,
+    pub target_speed_max: f32,
+    pub race_position: u32,
+    pub current_lap: u32,
+}
+
+#[derive(Default)]
 pub struct GameState {
     pub connected: bool,
     pub cc_class: u32,
@@ -95,7 +117,7 @@ pub struct GameState {
     pub countdown_phase: u32,
     pub total_laps: u32,
     pub player: KartState,
-    pub ai_karts: Vec<KartState>,
+    pub ai_karts: Vec<AiKartState>,
     pub error: Option<String>,
 }
 
@@ -145,6 +167,36 @@ pub fn try_read_state(dolphin: &Dolphin) -> GameState {
         let player_ptr = read_u32(dolphin, addr::G_PLAYER_CAR_OBJECT)?;
         if player_ptr != 0 {
             state.player = read_kart_state(dolphin, player_ptr)?;
+        }
+
+        // Read AI kart controllers
+        for i in 0u32..5 {
+            let kc_ptr = read_u32(dolphin, addr::AI_KART_CONTROLLERS + i * 4)?;
+            if kc_ptr == 0 {
+                continue;
+            }
+            let ps_ptr = read_u32(dolphin, kc_ptr + addr::KC_PHYSICS_STATE)?;
+            let ai = AiKartState {
+                slot: i,
+                pos: [
+                    read_f32(dolphin, kc_ptr + addr::KC_POS_X)?,
+                    read_f32(dolphin, kc_ptr + addr::KC_POS_Y)?,
+                    read_f32(dolphin, kc_ptr + addr::KC_POS_Z)?,
+                ],
+                target_speed_min: read_f32(dolphin, kc_ptr + addr::KC_TARGET_SPEED_MIN)?,
+                target_speed_max: read_f32(dolphin, kc_ptr + addr::KC_TARGET_SPEED_MAX)?,
+                race_position: if ps_ptr != 0 {
+                    read_u32(dolphin, ps_ptr + addr::PS_RACE_POSITION)?
+                } else {
+                    0
+                },
+                current_lap: if ps_ptr != 0 {
+                    read_u32(dolphin, ps_ptr + addr::PS_CURRENT_LAP)?
+                } else {
+                    0
+                },
+            };
+            state.ai_karts.push(ai);
         }
 
         Ok(())

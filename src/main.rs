@@ -1,0 +1,204 @@
+mod dolphin;
+
+use dolphin::GameState;
+use dolphin_memory::Dolphin;
+use eframe::egui;
+use std::time::Instant;
+
+fn main() -> eframe::Result {
+    let options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default()
+            .with_inner_size([520.0, 600.0])
+            .with_always_on_top(),
+        ..Default::default()
+    };
+    eframe::run_native(
+        "MKGP2 View",
+        options,
+        Box::new(|_cc| Ok(Box::new(App::new()))),
+    )
+}
+
+struct App {
+    dolphin: Option<Dolphin>,
+    state: GameState,
+    last_update: Instant,
+    auto_connect: bool,
+}
+
+impl App {
+    fn new() -> Self {
+        Self {
+            dolphin: None,
+            state: GameState::default(),
+            last_update: Instant::now(),
+            auto_connect: true,
+        }
+    }
+
+    fn try_connect(&mut self) {
+        match Dolphin::new() {
+            Ok(d) => {
+                self.dolphin = Some(d);
+                self.state.connected = true;
+                self.state.error = None;
+            }
+            Err(e) => {
+                self.dolphin = None;
+                self.state.connected = false;
+                self.state.error = Some(format!("接続失敗: {}", e));
+            }
+        }
+    }
+
+    fn poll(&mut self) {
+        let now = Instant::now();
+        if now.duration_since(self.last_update).as_millis() > 33 {
+            self.last_update = now;
+
+            if self.dolphin.is_none() && self.auto_connect {
+                self.try_connect();
+            }
+
+            if let Some(ref d) = self.dolphin {
+                self.state = dolphin::try_read_state(d);
+                if !self.state.connected {
+                    self.dolphin = None;
+                }
+            }
+        }
+    }
+}
+
+impl eframe::App for App {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        self.poll();
+        ui.ctx().request_repaint_after(std::time::Duration::from_millis(33));
+
+        ui.heading("MKGP2 View");
+
+        // Connection status
+        ui.horizontal(|ui| {
+            if self.state.connected {
+                ui.colored_label(egui::Color32::GREEN, "● 接続中");
+            } else {
+                ui.colored_label(egui::Color32::RED, "● 未接続");
+                if ui.button("接続").clicked() {
+                    self.try_connect();
+                }
+            }
+            ui.checkbox(&mut self.auto_connect, "自動再接続");
+        });
+
+        if let Some(ref err) = self.state.error {
+            ui.colored_label(egui::Color32::YELLOW, err);
+        }
+
+        if !self.state.connected {
+            return;
+        }
+
+        ui.separator();
+
+        // Race info
+        ui.horizontal(|ui| {
+            ui.label("コース:");
+            ui.strong(self.state.course_name());
+            ui.label("|");
+            ui.label(self.state.cc_label());
+            ui.label("|");
+            if self.state.race_started {
+                ui.colored_label(egui::Color32::GREEN, "レース中");
+            } else {
+                ui.label(format!("カウントダウン (phase {})", self.state.countdown_phase));
+            }
+            if self.state.total_laps > 0 {
+                ui.label(format!("| {}ラップ", self.state.total_laps));
+            }
+        });
+
+        ui.separator();
+
+        // Player kart state
+        ui.heading("プレイヤー");
+        render_kart_state(ui, &self.state.player);
+    }
+}
+
+fn render_kart_state(ui: &mut egui::Ui, kart: &dolphin::KartState) {
+    egui::Grid::new(format!("kart_{}", kart.slot))
+        .num_columns(2)
+        .spacing([20.0, 4.0])
+        .show(ui, |ui| {
+            ui.label("キャラ:");
+            ui.strong(kart.char_name());
+            ui.end_row();
+
+            ui.label("速度:");
+            ui.strong(format!("{:.1}", kart.speed_magnitude()));
+            ui.end_row();
+
+            ui.label("speedCap:");
+            ui.monospace(format!("{:.2}", kart.speed_cap));
+            ui.end_row();
+
+            ui.label("travelProgress:");
+            ui.monospace(format!("{:.1}", kart.travel_progress));
+            ui.end_row();
+
+            ui.label("speedTableIdx:");
+            let idx_text = match kart.speed_table_index {
+                0 => "0 (通常)".to_string(),
+                4 => "4 (スタートダッシュ)".to_string(),
+                5 => "5 (ドリフトブースト)".to_string(),
+                6 => "6 (アドバンスト)".to_string(),
+                n => format!("{}", n),
+            };
+            ui.monospace(idx_text);
+            ui.end_row();
+
+            ui.label("speedScale:");
+            ui.monospace(format!("{:.3}", kart.speed_scale));
+            ui.end_row();
+
+            ui.label("coinBonus:");
+            ui.monospace(format!("{:.3}", kart.coin_speed_bonus));
+            ui.end_row();
+
+            ui.label("コイン:");
+            ui.monospace(format!("{}", kart.coin_count));
+            ui.end_row();
+
+            ui.label("mue:");
+            ui.monospace(format!("{:.4}", kart.mue));
+            ui.end_row();
+
+            ui.label("位置:");
+            ui.monospace(format!(
+                "({:.1}, {:.1}, {:.1})",
+                kart.pos[0], kart.pos[1], kart.pos[2]
+            ));
+            ui.end_row();
+
+            ui.label("状態:");
+            let mut flags = Vec::new();
+            if kart.is_airborne {
+                flags.push("空中");
+            }
+            if kart.start_dash_ready {
+                flags.push("ロケスタ準備");
+            }
+            if flags.is_empty() {
+                ui.label("通常");
+            } else {
+                ui.colored_label(egui::Color32::YELLOW, flags.join(", "));
+            }
+            ui.end_row();
+
+            if kart.start_dash_frame > 0 {
+                ui.label("ダッシュフレーム:");
+                ui.monospace(format!("{}", kart.start_dash_frame));
+                ui.end_row();
+            }
+        });
+}

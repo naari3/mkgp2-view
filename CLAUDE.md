@@ -36,7 +36,7 @@ view起動中�� `cargo build` (全体) すると view の exe lock で失敗
 
 ## MKGP2 メモリマップ
 
-ゲーム内構造体やアドレスの詳細は dolphin リポジトリの `mkgp2docs/` を参照。
+ゲーム内構造体やアドレスの詳細は dolphin フォークの `mkgp2docs/` (`~/src/github.com/dolphin-emu/dolphin/mkgp2docs/`) を参照。
 主要アドレスは `src/dolphin.rs` の `addr` モジュールに集約。
 
 ## 注意事項

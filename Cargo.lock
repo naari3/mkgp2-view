@@ -1793,6 +1793,9 @@ dependencies = [
  "dolphin-memory",
  "eframe",
  "egui",
+ "serde",
+ "serde_json",
+ "winapi",
 ]
 
 [[package]]

@@ -3,8 +3,23 @@ name = "mkgp2-view"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "mkgp2-view"
+path = "src/main.rs"
+
+[[bin]]
+name = "mkgp2-mcp"
+path = "src/mcp_server.rs"
+
 [dependencies]
 byteorder = "1.5.0"
 dolphin-memory = "0.2.3"
-eframe = "0.34.1"
-egui = "0.34.1"
+winapi = { version = "0.3", features = ["tlhelp32", "processthreadsapi", "handleapi", "memoryapi", "winnt", "minwindef", "basetsd"] }
+eframe = { version = "0.34.1", optional = true }
+egui = { version = "0.34.1", optional = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[features]
+default = ["gui"]
+gui = ["dep:eframe", "dep:egui"]
